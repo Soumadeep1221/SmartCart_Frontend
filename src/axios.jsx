@@ -1,13 +1,15 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: `${import.meta.env.VITE_BASE_URL || "http://localhost:8080"}/api`,
 });
 
 const clearAuthentication = () => {
   localStorage.removeItem("jwt");
   localStorage.removeItem("user");
 };
+
+let lastForbiddenNotification = 0;
 
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("jwt");
@@ -28,9 +30,13 @@ API.interceptors.response.use(
         window.location.assign("/login");
       }
     } else if (status === 403) {
-      window.dispatchEvent(new CustomEvent("api-forbidden", {
-        detail: "You are not allowed to perform this action.",
-      }));
+      const now = Date.now();
+      if (now - lastForbiddenNotification > 1000) {
+        lastForbiddenNotification = now;
+        window.dispatchEvent(new CustomEvent("api-forbidden", {
+          detail: "You are not allowed to perform this action.",
+        }));
+      }
     }
 
     return Promise.reject(error);

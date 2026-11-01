@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios, { getProductImageUrl } from "../axios";
 import { toast } from "react-toastify";
 import { CATEGORIES } from "../constants/categories";
-import { getCategoryLabel } from "../constants/categories";
 import AppContext from "../Context/Context";
 import { productDetailCache } from "../Context/Context";
 import { useAuth } from "../Context/AuthContext";
@@ -365,7 +364,7 @@ const UpdateProduct = () => {
                           padding: '0.35rem 0.85rem', fontSize: '0.8rem', fontWeight: '600',
                           border: 'none', borderRadius: 'var(--radius-md)',
                           cursor: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'not-allowed' : 'pointer',
-                          background: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'var(--gray-200)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                          background: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'var(--gray-200)' : 'linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)',
                           color: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'var(--gray-500)' : 'white',
                           boxShadow: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
                           transition: 'all 0.2s ease',
@@ -550,7 +549,7 @@ const UpdateProduct = () => {
                           padding: '0.35rem 0.85rem', fontSize: '0.8rem', fontWeight: '600',
                           border: 'none', borderRadius: 'var(--radius-md)',
                           cursor: generatingImage || (!isAdmin && insufficientImageTokens) ? 'not-allowed' : 'pointer',
-                          background: generatingImage || (!isAdmin && insufficientImageTokens) ? 'var(--gray-200)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                          background: generatingImage || (!isAdmin && insufficientImageTokens) ? 'var(--gray-200)' : 'linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)',
                           color: generatingImage || (!isAdmin && insufficientImageTokens) ? 'var(--gray-500)' : 'white',
                           boxShadow: generatingImage || (!isAdmin && insufficientImageTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
                           transition: 'all 0.2s ease',

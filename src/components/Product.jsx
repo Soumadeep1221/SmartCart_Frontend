@@ -11,13 +11,12 @@ import unplugged from "../assets/unplugged.png";
 
 const Product = () => {
   const { id } = useParams();
-  const { data, addToCart, removeFromCart, refreshData, updateStockQuantity } = useContext(AppContext);
+  const { addToCart, removeFromCart, refreshData, updateStockQuantity } = useContext(AppContext);
   const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [localStockQuantity, setLocalStockQuantity] = useState(null);
-  const [showToast, setShowToast] = useState(false);
-  const [toastProduct, setToastProduct] = useState(null);
+  const [notice, setNotice] = useState("");
   const [addingToCart, setAddingToCart] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
@@ -54,14 +53,10 @@ const Product = () => {
   }, [imageUrl]);
 
   useEffect(() => {
-    let toastTimer;
-    if (showToast) {
-      toastTimer = setTimeout(() => {
-        setShowToast(false);
-      }, 3000);
-    }
-    return () => clearTimeout(toastTimer);
-  }, [showToast]);
+    if (!notice) return undefined;
+    const noticeTimer = window.setTimeout(() => setNotice(""), 2400);
+    return () => window.clearTimeout(noticeTimer);
+  }, [notice]);
 
   const deleteProduct = async () => {
     if (!window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
@@ -148,9 +143,7 @@ const Product = () => {
         updateStockQuantity(product.id, newQuantity);
       }
       
-      // Show standardized notification
-      setToastProduct(product);
-      setShowToast(true);
+      setNotice(`${product.name} added to your cart`);
       
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -181,66 +174,7 @@ const Product = () => {
 
   return (
     <>
-      {/* Standardized Toast Notification */}
-      <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 1050 }}>
-        <div 
-          className={`toast ${showToast ? 'show' : 'hide'} animate-slideInUp`}
-          role="alert" 
-          aria-live="assertive" 
-          aria-atomic="true"
-          style={{
-            backgroundColor: 'white',
-            border: 'none',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-xl)',
-            minWidth: '300px'
-          }}
-        >
-          <div 
-            className="toast-header border-0 pb-2"
-            style={{ 
-              background: 'linear-gradient(135deg, var(--success-color) 0%, var(--success-hover) 100%)',
-              color: 'white',
-              borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0'
-            }}
-          >
-            <i className="bi bi-check-circle-fill me-2"></i>
-            <strong className="me-auto">Added to Cart</strong>
-            <button 
-              type="button" 
-              className="btn-close btn-close-white" 
-              onClick={() => setShowToast(false)}
-              aria-label="Close"
-            ></button>
-          </div>
-          <div className="toast-body p-3">
-            {toastProduct && (
-              <div className="d-flex align-items-center">
-                <img 
-                  src={getProductImageUrl(toastProduct.id)}
-                  alt={toastProduct.name} 
-                  className="me-3 rounded" 
-                  style={{
-                    width: '50px',
-                    height: '50px',
-                    objectFit: 'cover',
-                    border: '2px solid var(--gray-200)'
-                  }}
-                  onError={(e) => {
-                    e.target.src = unplugged;
-                  }}
-                />
-                <div>
-                  <div className="fw-semibold mb-1" style={{ color: 'var(--gray-900)' }}>
-                    {toastProduct.name}
-                  </div>
-                  <small className="text-muted">by {toastProduct.brand}</small>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {notice && <div className="toast app-notification show position-fixed top-0 end-0 m-4" style={{ zIndex: 1055 }}><div className="toast-body"><i className="bi bi-check-circle-fill text-success me-2" />{notice}</div></div>}
 
       {/* Main Content */}
       <div className="min-vh-100" style={{ backgroundColor: 'var(--gray-50)', paddingTop: '6rem' }}>

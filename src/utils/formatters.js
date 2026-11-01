@@ -1,4 +1,4 @@
-// Utility functions for formatting data in Soumadeep's Corner
+// Shared formatting helpers for SmartCart
 
 /**
  * Format date to Indian format (DD/MM/YYYY)

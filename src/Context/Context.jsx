@@ -8,12 +8,12 @@ const AppContext = createContext({
   cart: [],
   selectedCategory: "",
   setSelectedCategory: () => {},
-  addToCart: (product) => {},
-  removeFromCart: (productId) => {},
+  addToCart: () => {},
+  removeFromCart: () => {},
   refreshData:() =>{},
-  updateStockQuantity: (productId, newQuantity) =>{},
-  updateProductInData: (productId, updatedFields) => {},
-  updateCartItemQuantity: (productId, newQuantity) => {}
+  updateStockQuantity: () => {},
+  updateProductInData: () => {},
+  updateCartItemQuantity: () => {}
 });
 
 // Module-level cache — survives StrictMode remounts

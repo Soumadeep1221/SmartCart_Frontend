@@ -252,7 +252,7 @@ const OrderSuccessModal = ({ show, handleClose, orderItems, totalPrice, customer
         </div>
       </Modal.Footer>
       
-      <style jsx>{`
+      <style>{`
         .order-success-modal .modal-content {
           border: none;
           border-radius: var(--radius-xl);

@@ -350,7 +350,7 @@ const AddProduct = () => {
                             cursor: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'not-allowed' : 'pointer',
                             background: generatingDesc || (!isAdmin && insufficientDescriptionTokens)
                               ? 'var(--gray-200)'
-                              : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                              : 'linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)',
                             color: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'var(--gray-500)' : 'white',
                             boxShadow: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
                             transition: 'all 0.2s ease',
@@ -384,10 +384,9 @@ const AddProduct = () => {
                             </>
                           )}
                         </button>
-                        {!isAdmin && <small className="text-muted ms-2">
-                          Generate description: {Number.isFinite(descriptionCost) ? descriptionCost : "..."} tokens
-                          {insufficientDescriptionTokens && " · Not enough tokens"}
-                        </small>}
+                        <small className="text-muted ms-2">
+                          {isAdmin ? "Unlimited AI credits" : `Generate Product Description — ${Number.isFinite(descriptionCost) ? descriptionCost : "..."} credits${insufficientDescriptionTokens ? " · Not enough credits" : ""}`}
+                        </small>
                       </div>
                       <textarea
                         name="description"
@@ -575,7 +574,7 @@ const AddProduct = () => {
                             cursor: generatingImage || (!isAdmin && insufficientImageTokens) ? 'not-allowed' : 'pointer',
                             background: generatingImage || (!isAdmin && insufficientImageTokens)
                               ? 'var(--gray-200)'
-                              : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                              : 'linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)',
                             color: generatingImage || (!isAdmin && insufficientImageTokens) ? 'var(--gray-500)' : 'white',
                             boxShadow: generatingImage || (!isAdmin && insufficientImageTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
                             transition: 'all 0.2s ease',
@@ -609,10 +608,9 @@ const AddProduct = () => {
                             </>
                           )}
                         </button>
-                        {!isAdmin && <small className="text-muted ms-2">
-                          Generate image: {Number.isFinite(imageCost) ? imageCost : "..."} tokens
-                          {insufficientImageTokens && " · Not enough tokens"}
-                        </small>}
+                        <small className="text-muted ms-2">
+                          {isAdmin ? "Unlimited AI credits" : `Generate Product Image — ${Number.isFinite(imageCost) ? imageCost : "..."} credits${insufficientImageTokens ? " · Not enough credits" : ""}`}
+                        </small>
                       </div>
                       <input
                         type="file"

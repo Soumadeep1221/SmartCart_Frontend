@@ -1,102 +1,114 @@
-# 🛍️ E-Commerce Website — Frontend
+# SmartCart Frontend
 
-A modern and responsive frontend for a full-stack e-commerce platform designed to support multiple product categories such as electronics, clothing, toys, laptops, mobiles, and more. The application delivers a seamless shopping experience with intuitive navigation and efficient communication with backend APIs.
+SmartCart is a React and Vite e-commerce frontend backed by a Spring Boot REST API. It supports product discovery, category filtering, search, cart management, checkout, Google sign-in, AI-powered product tools, and admin order management.
 
----
+## Features
 
-## 🚀 Tech Stack
+- Responsive product catalog with category filtering and product search
+- Product details with stock-aware add-to-cart behavior
+- Persistent shopping cart using browser storage
+- Checkout and order confirmation flow
+- User and administrator authentication
+- Admin product creation, editing, deletion, and order management
+- AI-assisted product descriptions, images, and shopping chat
+- Consistent opaque success and error notifications
+- Netlify SPA routing support
 
-* **ReactJS** — Component-based UI development
-* **JavaScript (ES6+)** — Application logic
-* **HTML5 & CSS3** — Structure and styling
-* **REST APIs** — Integration with the Spring Boot backend
+## Technology
 
----
+- React 18
+- Vite
+- React Router
+- Axios
+- Bootstrap and React Bootstrap
+- React Toastify
+- Google Identity Services
 
-## 🧭 Project Workflow
+## Requirements
 
-The frontend is built to provide a smooth user journey from product discovery to order tracking.
+- Node.js 18 or newer
+- npm
+- A running instance of the SmartCart Spring Boot backend
 
-### ✅ Product Flow
+Backend repository:
 
-* Fetches products from the backend and displays them dynamically
-* Supports multiple product categories
-* Users can:
+https://github.com/Soumadeep1221/SpringEcommerce_Backend
 
-  * View product details
-  * Search by name, brand, or description
-  * Explore available inventory
-  * Add items to the cart
+## Local Development
 
----
-
-### ✅ Cart & Checkout Flow
-
-* Users can review selected products inside the cart
-* Proceed to checkout by entering customer details
-* Sends structured order data to the backend for processing
-
----
-
-### ✅ Order Flow
-
-* Displays confirmation after successful order placement
-* Provides a dedicated orders section where users can view:
-
-  * Purchased items
-  * Quantities
-  * Pricing
-  * Order status
-  * Customer details
-
-The frontend emphasizes responsiveness, clarity, and efficient data exchange with backend services.
-
----
-
-## ⚙️ Getting Started
-
-### 🔗 Repository
-
-https://github.com/Soumadeep1221/SpringEcommerce_Frontend.git
-
----
-
-### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/Soumadeep1221/SpringEcommerce_Frontend.git
-cd SpringEcommerce_Frontend
-```
-
----
-
-### 2️⃣ Install Dependencies
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
----
+### 2. Configure environment variables
 
-### 3️⃣ Start the Development Server
+Copy `.env.example` to `.env` and set the values:
+
+```env
+VITE_BASE_URL=http://localhost:8080
+VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+```
+
+`VITE_BASE_URL` should contain the backend origin only. Do not append `/api`; the frontend adds that path automatically.
+
+### 3. Start the development server
 
 ```bash
 npm run dev
 ```
 
-The application should now run on:
+The app is available at the local Vite URL, usually:
 
-👉 **http://localhost:5173** *(default Vite port — may vary)*
+http://localhost:5173
 
----
+## Production Build
 
-## 🔗 Backend Requirement
+Run the checks and create the production bundle:
 
-This frontend requires the Spring Boot backend to be running for full functionality.
+```bash
+npm run lint
+npm run build
+```
 
-Backend Repository:
-https://github.com/Soumadeep1221/SpringEcommerce_Backend.git
+Preview the production bundle locally:
 
----
+```bash
+npm run preview
+```
 
-⭐ If you found this project helpful, consider giving it a star!
+The generated files are written to `dist/`.
+
+## Netlify Deployment
+
+Use the following Netlify build settings:
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Publish directory | `dist` |
+
+Add these environment variables in **Site configuration → Environment variables**:
+
+| Variable | Description |
+|---|---|
+| `VITE_BASE_URL` | Production backend origin, without `/api` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID |
+
+The `public/_redirects` file is included so React Router routes work correctly after direct navigation or page refresh.
+
+## Repository Commands
+
+```bash
+npm run dev       # Start the development server
+npm run lint      # Run ESLint
+npm run build     # Create a production build
+npm run preview   # Preview the production build
+```
+
+## Related Repository
+
+Frontend repository:
+
+https://github.com/Soumadeep1221/SpringEcommerce_Frontend

@@ -1,584 +1,151 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useContext, useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios, { getProductImageUrl } from "../axios";
-import { CATEGORIES } from "../constants/categories";
-import { formatCurrency } from "../utils/formatters";
-import unplugged from "../assets/unplugged.png";
-import { useContext } from "react";
 import AppContext from "../Context/Context";
 import { useAuth } from "../Context/AuthContext";
+import unplugged from "../assets/unplugged.png";
 import ChatBot from "./ChatBot";
 
 const Navbar = () => {
-  const { selectedCategory, setSelectedCategory } = useContext(AppContext);
+  const { cart } = useContext(AppContext);
   const { user, logout } = useAuth();
-  const getInitialTheme = () => {
-    const storedTheme = localStorage.getItem("theme");
-    return storedTheme ? storedTheme : "light-theme";
-  };
-  
-  const [theme, setTheme] = useState(getInitialTheme());
-  const [input, setInput] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [noResults, setNoResults] = useState(false);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-  const [showChat, setShowChat] = useState(false);
-  
-  const navbarRef = useRef(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [highlightedSearch, setHighlightedSearch] = useState(-1);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const searchTimer = useRef(null);
+  const searchRef = useRef(null);
+  const profileRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Add click event listener to close navbar when clicking outside
-    const handleClickOutside = (event) => {
-      if (navbarRef.current && !navbarRef.current.contains(event.target)) {
-        setIsNavCollapsed(true);
-        setShowCategoryDropdown(false);
-      }
+    const closeMenus = (event) => {
+      if (!searchRef.current?.contains(event.target)) setSearchOpen(false);
+      if (!profileRef.current?.contains(event.target)) setProfileOpen(false);
     };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", closeMenus);
+    return () => document.removeEventListener("mousedown", closeMenus);
   }, []);
 
-  // Toggle navbar collapse state
-  const handleNavbarToggle = () => {
-    setIsNavCollapsed(!isNavCollapsed);
-  };
-
-  // Close navbar when a link is clicked
-  const handleLinkClick = () => {
-    setIsNavCollapsed(true);
-  };
-
-  // Debounced search function
-  const performSearch = async (searchTerm) => {
-    if (!searchTerm.trim()) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      setNoResults(false);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`/products/search?keyword=${searchTerm}`);
-      setSearchResults(response.data);
-      setNoResults(response.data.length === 0);
-      setShowSearchResults(true);
-    } catch (error) {
-      console.error("Error searching:", error);
-      setSearchResults([]);
-      setNoResults(true);
-      setShowSearchResults(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle input change with debouncing
-  const handleInputChange = (value) => {
-    setInput(value);
-    
-    // Clear existing timeout
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    // Set new timeout for debounced search
-    const newTimeout = setTimeout(() => {
-      performSearch(value);
-    }, 300); // 300ms debounce delay
-
-    setSearchTimeout(newTimeout);
-  };
-
-  // Handle search form submission (for Enter key)
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    performSearch(input);
-  };
-
-  // Handle clicking outside search to close results
-  const handleSearchBlur = () => {
-    // Delay hiding results to allow clicking on them
-    setTimeout(() => {
-      setShowSearchResults(false);
-    }, 200);
-  };
-
-  // Handle search result click
-  const handleSearchResultClick = (productId) => {
-    setShowSearchResults(false);
-    setInput("");
-    setSearchResults([]);
-    navigate(`/product/${productId}`);
-  };
-
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    setShowCategoryDropdown(false);
-    setIsNavCollapsed(true);
-  };
-
-  const toggleCategoryDropdown = (e) => {
-    e.preventDefault();
-    setShowCategoryDropdown(!showCategoryDropdown);
-  };
-  
-  const toggleTheme = () => {
-    const newTheme = theme === "dark-theme" ? "light-theme" : "dark-theme";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-  };
-
-  // Clean up timeout on component unmount
   useEffect(() => {
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+        setSearchOpen(false);
       }
     };
-  }, [searchTimeout]);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, []);
 
-  useEffect(() => {
-    document.body.className = theme;
-  }, [theme]);
-  
+  useEffect(() => () => window.clearTimeout(searchTimer.current), []);
+
+  const search = async (value) => {
+    if (!value.trim()) {
+      setResults([]);
+      setSearchOpen(false);
+      setHighlightedSearch(-1);
+      return;
+    }
+    try {
+      const response = await axios.get(`/products/search?keyword=${encodeURIComponent(value)}`);
+      setResults(response.data);
+      setHighlightedSearch(-1);
+      setSearchOpen(true);
+    } catch (error) {
+      console.error("Search failed:", error);
+      setResults([]);
+      setHighlightedSearch(-1);
+      setSearchOpen(true);
+    }
+  };
+
+  const handleSearch = (event) => {
+    const value = event.target.value;
+    setQuery(value);
+    window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(() => search(value), 280);
+  };
+
+  const goToProduct = (id) => {
+    setQuery("");
+    setSearchOpen(false);
+    setHighlightedSearch(-1);
+    navigate(`/product/${id}`);
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (!searchOpen || !results.length) {
+      if (event.key === "Escape") setSearchOpen(false);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlightedSearch((current) => (current + 1) % Math.min(results.length, 5));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightedSearch((current) => (current <= 0 ? Math.min(results.length, 5) - 1 : current - 1));
+    } else if (event.key === "Enter" && highlightedSearch >= 0) {
+      event.preventDefault();
+      goToProduct(results[highlightedSearch].id);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setSearchOpen(false);
+      setHighlightedSearch(-1);
+    }
+  };
+
+  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const visibleResults = results.slice(0, 5);
+
   return (
     <>
-    {!user?.admin && Number(user?.tokenBalance) === 0 && (
-      <div
-        className="alert alert-warning mb-0 text-center rounded-0"
-        style={{ position: "fixed", top: "68px", left: 0, right: 0, zIndex: 1040 }}
-      >
-        You’ve used all your tokens. Logging in again does not give more tokens.
-      </div>
-    )}
-    <nav className="navbar navbar-expand-lg fixed-top shadow-sm" style={{ backgroundColor: 'white', borderBottom: '1px solid var(--gray-200)' }} ref={navbarRef}>
-      <div className="container-fluid px-4">
-        {/* Brand Logo */}
-        <a 
-          className="navbar-brand d-flex align-items-center" 
-          href="https://soumadeep-dey-portfolio.vercel.app/" 
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ 
-            fontWeight: '700', 
-            fontSize: '1.5rem', 
-            color: 'var(--primary-color)',
-            textDecoration: 'none',
-            transition: 'all var(--transition-normal)'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.color = 'var(--primary-hover)';
-            e.target.style.transform = 'scale(1.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.color = 'var(--primary-color)';
-            e.target.style.transform = 'scale(1)';
-          }}
-        >
-          <i className="bi bi-shop me-2" style={{ fontSize: '1.3rem' }}></i>
-          Soumadeep's Corner
-        </a>
-
-        {/* Mobile Toggle Button */}
-        <button
-          className="navbar-toggler border-0"
-          type="button"
-          onClick={handleNavbarToggle}
-          aria-controls="navbarSupportedContent"
-          aria-expanded={!isNavCollapsed}
-          aria-label="Toggle navigation"
-          style={{ 
-            boxShadow: 'none',
-            padding: '0.5rem',
-            borderRadius: 'var(--radius-md)'
-          }}
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-        {/* Navigation Menu */}
-        <div
-          className={`${isNavCollapsed ? 'collapse' : ''} navbar-collapse`}
-          id="navbarSupportedContent"
-        >
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <a 
-                className="nav-link fw-medium px-3 py-2 rounded-pill" 
-                style={{ 
-                  color: 'var(--gray-700)',
-                  transition: 'all var(--transition-fast)',
-                  margin: '0 0.25rem'
-                }}
-                href="/" 
-                onClick={handleLinkClick}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'var(--primary-light)';
-                  e.target.style.color = 'var(--primary-color)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.color = 'var(--gray-700)';
-                }}
-              >
-                <i className="bi bi-house me-1"></i>
-                Home
-              </a>
-            </li>
-            
-            <li className="nav-item">
-              <a 
-                className="nav-link fw-medium px-3 py-2 rounded-pill" 
-                style={{ 
-                  color: 'var(--gray-700)',
-                  transition: 'all var(--transition-fast)',
-                  margin: '0 0.25rem'
-                }}
-                href="/add_product" 
-                onClick={handleLinkClick}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'var(--primary-light)';
-                  e.target.style.color = 'var(--primary-color)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.color = 'var(--gray-700)';
-                }}
-              >
-                <i className="bi bi-plus-circle me-1"></i>
-                Add Product
-              </a>
-            </li>
-
-            {/* Categories Dropdown */}
-            <li className="nav-item dropdown position-relative">
-              <a 
-                className="nav-link dropdown-toggle fw-medium px-3 py-2 rounded-pill" 
-                href="#" 
-                role="button" 
-                onClick={toggleCategoryDropdown}
-                aria-expanded={showCategoryDropdown}
-                style={{ 
-                  color: 'var(--gray-700)',
-                  transition: 'all var(--transition-fast)',
-                  margin: '0 0.25rem'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'var(--primary-light)';
-                  e.target.style.color = 'var(--primary-color)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!showCategoryDropdown) {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.color = 'var(--gray-700)';
-                  }
-                }}
-              >
-                <i className="bi bi-grid me-1"></i>
-                Categories
-              </a>
-              <ul className={`dropdown-menu ${showCategoryDropdown ? 'show' : ''}`} style={{ minWidth: '200px' }}>
-                <li>
-                  <a 
-                    className="dropdown-item" 
-                    href="#" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleCategorySelect("");
-                    }}
-                  >
-                    <i className="bi bi-grid-3x3-gap me-2"></i>
-                    All Products
-                  </a>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-                {CATEGORIES.map((category) => (
-                  <li key={category.value}>
-                    <a 
-                      className="dropdown-item" 
-                      href="#" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleCategorySelect(category.value);
-                      }}
-                    >
-                      <i className="bi bi-tag me-2"></i>
-                      {category.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </li>
-
-            {user?.admin && <li className="nav-item">
-              <a 
-                className="nav-link fw-medium px-3 py-2 rounded-pill" 
-                style={{ 
-                  color: 'var(--gray-700)',
-                  transition: 'all var(--transition-fast)',
-                  margin: '0 0.25rem'
-                }}
-                href="/orders" 
-                onClick={handleLinkClick}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'var(--primary-light)';
-                  e.target.style.color = 'var(--primary-color)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.color = 'var(--gray-700)';
-                }}
-              >
-                <i className="bi bi-box-seam me-1"></i>
-                Orders
-              </a>
-            </li>}
-          </ul>
-          
-          {/* Right Side - Cart and Search */}
-          <div className="d-flex align-items-center gap-3">
-            <div className="d-flex align-items-center gap-2">
-              <img
-                src={user.pictureUrl}
-                alt={user.name}
-                className="rounded-circle"
-                style={{ width: "34px", height: "34px", objectFit: "cover" }}
-              />
-              <div className="d-none d-xl-block">
-                <div className="fw-semibold small">{user.name}</div>
-                <span className="badge text-bg-primary">
-                  {user.admin ? "Unlimited" : `Tokens: ${user.tokenBalance ?? 0}`}
-                </span>
+      {!user?.admin && Number(user?.tokenBalance) === 0 && <div className="alert alert-warning text-center rounded-0 mb-0 py-2">Your AI credits are empty. You can still browse and shop as usual.</div>}
+      <nav className="navbar navbar-expand-lg fixed-top" ref={searchRef}>
+        <div className="container-fluid px-3 px-lg-4">
+          <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
+            <span className="d-inline-flex align-items-center justify-content-center rounded-circle" style={{ width: 38, height: 38, background: "var(--primary-light)" }}><i className="bi bi-bag-heart-fill" style={{ color: "var(--terracotta)" }} /></span>
+            <span><strong>SmartCart</strong><small className="d-block text-muted" style={{ fontSize: ".65rem", letterSpacing: ".08em" }}>SHOP SMARTER. LIVE BETTER.</small></span>
+          </Link>
+          <button className="navbar-toggler" type="button" onClick={() => setMobileOpen((open) => !open)} aria-expanded={mobileOpen} aria-label="Toggle navigation"><i className="bi bi-list fs-3" /></button>
+          <div className={`${mobileOpen ? "show" : ""} collapse navbar-collapse`}>
+            <ul className="navbar-nav me-auto align-items-lg-center gap-lg-1">
+              <li className="nav-item"><Link className="nav-link px-3" to="/" onClick={() => setMobileOpen(false)}>Home</Link></li>
+              <li className="nav-item"><Link className="nav-link px-3" to="/add_product" onClick={() => setMobileOpen(false)}>Add product</Link></li>
+              {user?.admin && <li className="nav-item"><Link className="nav-link px-3" to="/orders" onClick={() => setMobileOpen(false)}>Orders</Link></li>}
+            </ul>
+            <div className="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2">
+              <div className="position-relative">
+                <div className="input-group">
+                  <span className="input-group-text border-0" style={{ background: "var(--sand)" }}><i className="bi bi-search text-muted" /></span>
+                  <input className="form-control border-0" value={query} onChange={handleSearch} onKeyDown={handleSearchKeyDown} onFocus={() => query && setSearchOpen(true)} placeholder="Search products..." aria-label="Search products" aria-controls="search-suggestions" aria-expanded={searchOpen} role="combobox" aria-autocomplete="list" aria-activedescendant={highlightedSearch >= 0 ? `search-option-${visibleResults[highlightedSearch]?.id}` : undefined} />
+                </div>
+                {searchOpen && <div id="search-suggestions" className="dropdown-menu show search-results position-absolute end-0 w-100" style={{ top: "calc(100% + .5rem)" }} role="listbox" aria-label="Product suggestions">
+                  {visibleResults.length ? visibleResults.map((product, index) => <button id={`search-option-${product.id}`} type="button" role="option" aria-selected={index === highlightedSearch} className="dropdown-item d-flex align-items-center gap-2 py-2" key={product.id} onClick={() => goToProduct(product.id)} onMouseEnter={() => setHighlightedSearch(index)}><img src={getProductImageUrl(product.id)} alt="" onError={(event) => { event.currentTarget.src = unplugged; }} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8 }} /><span className="text-truncate">{product.name}</span></button>) : <span className="dropdown-item-text text-muted">No products found</span>}
+                </div>}
               </div>
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={logout}
-              >
-                Logout
-              </button>
-            </div>
-            {/* Cart Link */}
-            <a 
-              href="/cart" 
-              className="nav-link d-flex align-items-center px-3 py-2 rounded-pill" 
-              onClick={handleLinkClick}
-              style={{ 
-                color: 'var(--gray-700)',
-                textDecoration: 'none',
-                transition: 'all var(--transition-fast)',
-                fontWeight: '500'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'var(--primary-light)';
-                e.target.style.color = 'var(--primary-color)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = 'var(--gray-700)';
-              }}
-            >
-              <i className="bi bi-cart3 me-1" style={{ fontSize: '1.1rem' }}></i>
-              Cart
-            </a>
-
-            {/* Search Section */}
-            <div className="position-relative">
-              <form className="d-flex" role="search" onSubmit={handleSubmit} id="searchForm">
-                <div className="input-group" style={{ minWidth: '280px' }}>
-                  <input
-                    className="form-control border-end-0"
-                    type="search"
-                    placeholder="Search products..."
-                    aria-label="Search"
-                    value={input}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    onBlur={handleSearchBlur}
-                    onFocus={() => input && setShowSearchResults(true)}
-                    style={{
-                      borderColor: 'var(--gray-300)',
-                      borderRadius: 'var(--radius-md) 0 0 var(--radius-md)',
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.95rem'
-                    }}
-                  />
-                  {isLoading ? (
-                    <button
-                      className="btn btn-outline-secondary border-start-0"
-                      type="button"
-                      disabled
-                      style={{
-                        borderColor: 'var(--gray-300)',
-                        borderRadius: '0 var(--radius-md) var(--radius-md) 0'
-                      }}
-                    >
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-primary border-start-0"
-                      type="submit"
-                      style={{
-                        borderRadius: '0 var(--radius-md) var(--radius-md) 0',
-                        paddingLeft: '1rem',
-                        paddingRight: '1rem'
-                      }}
-                    >
-                      <i className="bi bi-search"></i>
-                    </button>
-                  )}
-                </div>
-              </form>
-              {/* Search Results Dropdown */}
-              {showSearchResults && (
-                <div 
-                  className="position-absolute bg-white border rounded-lg shadow-lg mt-1 w-100 animate-fadeIn" 
-                  style={{ 
-                    zIndex: 1050, 
-                    maxHeight: '400px', 
-                    overflowY: 'auto',
-                    minWidth: '350px',
-                    left: 0,
-                    border: 'none',
-                    borderRadius: 'var(--radius-lg)',
-                    boxShadow: 'var(--shadow-xl)'
-                  }}
-                >
-                  {isLoading ? (
-                    <div className="p-4 text-center">
-                      <div className="spinner-border spinner-border-sm text-primary" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                      <span className="ms-2 text-muted">Searching...</span>
-                    </div>
-                  ) : noResults ? (
-                    <div className="p-4 text-center text-muted">
-                      <i className="bi bi-search mb-2 d-block" style={{ fontSize: '2rem', color: 'var(--gray-400)' }}></i>
-                      <div className="fw-medium">No products found</div>
-                      <small>Try searching with different keywords</small>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="p-3 border-bottom" style={{ backgroundColor: 'var(--gray-50)' }}>
-                        <small className="text-muted fw-medium">
-                          {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
-                        </small>
-                      </div>
-                      {searchResults.slice(0, 5).map((product) => (
-                        <div 
-                          key={product.id}
-                          className="p-3 border-bottom search-result-item"
-                          style={{ 
-                            cursor: 'pointer',
-                            transition: 'all var(--transition-fast)'
-                          }}
-                          onClick={() => handleSearchResultClick(product.id)}
-                          onMouseDown={(e) => e.preventDefault()}
-                        >
-                          <div className="d-flex align-items-center">
-                            <div className="me-3">
-                              <img 
-                                src={getProductImageUrl(product.id)}
-                                alt={product.name}
-                                style={{ 
-                                  width: '50px', 
-                                  height: '50px', 
-                                  objectFit: 'cover',
-                                  borderRadius: 'var(--radius-md)',
-                                  border: '2px solid var(--gray-200)'
-                                }}
-                                className="rounded"
-                                onError={(e) => {
-                                  e.target.src = unplugged;
-                                }}
-                              />
-                            </div>
-                            <div className="flex-grow-1">
-                              <div className="fw-semibold text-truncate mb-1" style={{ color: 'var(--gray-900)' }}>
-                                {product.name}
-                              </div>
-                              <div className="text-muted small mb-1">{product.brand}</div>
-                              <div className="fw-bold" style={{ color: 'var(--primary-color)' }}>
-                                {formatCurrency(product.price)}
-                              </div>
-                            </div>
-                            <div className="ms-2">
-                              <i className="bi bi-arrow-right" style={{ color: 'var(--gray-400)' }}></i>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {searchResults.length > 5 && (
-                        <div className="p-3 text-center border-top" style={{ backgroundColor: 'var(--gray-50)' }}>
-                          <small className="text-muted">
-                            Showing first 5 results. Refine your search for more specific results.
-                          </small>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+              <Link className="btn btn-primary position-relative px-3" to="/cart"><i className="bi bi-bag me-2" />Cart{cartCount > 0 && <span className="badge rounded-pill bg-light text-dark ms-2">{cartCount}</span>}</Link>
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setChatOpen(true)}><i className="bi bi-stars me-1" />Ask AI</button>
+              <div className="position-relative ms-lg-2" ref={profileRef}>
+                <button type="button" className="profile-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
+                  <img src={user?.pictureUrl || unplugged} alt="" className="rounded-circle" />
+                  <span className="d-none d-xl-block text-start"><strong>{user?.name || "Your account"}</strong><small>{user?.admin ? "Admin" : "Member"}</small></span>
+                  <i className="bi bi-chevron-down" />
+                </button>
+                {profileOpen && <div className="profile-menu" role="menu">
+                  <div className="profile-menu-heading"><strong>{user?.name || "SmartCart member"}</strong><span>{user?.admin ? "Admin account" : "Personal account"}</span></div>
+                  <div className="profile-credit"><i className="bi bi-stars" /><span>{user?.admin ? "Unlimited AI Credits" : `${Number(user?.tokenBalance ?? 0)} AI credits remaining`}</span></div>
+                  <button type="button" className="profile-signout" role="menuitem" onClick={() => { setProfileOpen(false); logout(); }}><i className="bi bi-box-arrow-right" /> Sign out</button>
+                </div>}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </nav>
-
-    {/* Floating Chat Button */}
-    <button
-      onClick={() => setShowChat((v) => !v)}
-      title="AI Assistant"
-      style={{
-        position: "fixed",
-        bottom: "1.5rem",
-        right: "1.5rem",
-        width: "56px",
-        height: "56px",
-        borderRadius: "50%",
-        border: "none",
-        background: showChat
-          ? "var(--gray-600)"
-          : "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-        color: "white",
-        boxShadow: showChat
-          ? "var(--shadow-lg)"
-          : "0 8px 25px rgba(124,58,237,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        zIndex: 1061,
-        transition: "all 0.25s ease",
-        transform: showChat ? "rotate(0deg)" : "rotate(0deg)",
-      }}
-      onMouseEnter={(e) => {
-        if (!showChat) e.currentTarget.style.transform = "scale(1.1)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-      }}
-    >
-      <i
-        className={showChat ? "bi bi-x-lg" : "bi bi-stars"}
-        style={{ fontSize: "1.3rem", transition: "all 0.2s" }}
-      ></i>
-    </button>
-
-    {/* ChatBot Panel */}
-    <ChatBot open={showChat} onClose={() => setShowChat(false)} />
+      </nav>
+      <ChatBot open={chatOpen} onClose={() => setChatOpen(false)} />
     </>
   );
 };

@@ -1,7 +1,7 @@
 import axios, { getProductImageUrl } from '../axios';
 import { useEffect, useState } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
-import { formatCurrency, formatDateIndian } from '../utils/formatters';
+import { formatCurrency } from '../utils/formatters';
 import unplugged from '../assets/unplugged.png';
 import { useAuth } from '../Context/AuthContext';
 
@@ -320,7 +320,7 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
         </Modal.Footer>
       </Form>
       
-      <style jsx>{`
+      <style>{`
         .checkout-modal .modal-content {
           border: none;
           border-radius: var(--radius-xl);

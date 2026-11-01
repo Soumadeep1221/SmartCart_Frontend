@@ -1,9 +1,6 @@
 import axios from '../axios';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { formatDateIndian, formatCurrency } from '../utils/formatters';
-
-// Module-level cache — survives StrictMode remounts
-let ordersCache = null;
 
 const Order = () => {
   const [orders, setOrders] = useState([]);
@@ -11,25 +8,31 @@ const Order = () => {
   const [error, setError] = useState(null);
   const [expandedOrder, setExpandedOrder] = useState(null);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        if (!ordersCache) {
-          ordersCache = axios.get(`/orders`);
-        }
-        const response = await ordersCache;
-        setOrders(response.data);
-        setLoading(false);
-      } catch (err) {
-        ordersCache = null;
-        console.log(err);
-        setError("Failed to fetch orders. Please try again later.");
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
+  const fetchOrders = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await axios.get(`/orders`);
+      setOrders(response.data);
+    } catch (err) {
+      console.error("Failed to fetch orders:", err);
+      setError("Failed to fetch orders. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchOrders();
+
+    const refreshWhenActive = () => fetchOrders();
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+
+    return () => {
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [fetchOrders]);
 
   const toggleOrderDetails = (orderId) => {
     if (expandedOrder === orderId) {
@@ -135,7 +138,7 @@ const Order = () => {
                       No Orders Yet
                     </h3>
                     <p className="text-muted mb-4">
-                      You haven't placed any orders yet. Start shopping to see your orders here!
+                      You haven&apos;t placed any orders yet. Start shopping to see your orders here!
                     </p>
                     <a 
                       href="/" 

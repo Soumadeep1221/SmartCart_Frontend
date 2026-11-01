@@ -124,7 +124,7 @@ const ChatBot = ({ open, onClose }) => {
       {/* Header */}
       <div
         style={{
-          background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
+          background: "linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)",
           padding: "1rem 1.25rem",
           display: "flex",
           alignItems: "center",
@@ -244,7 +244,7 @@ const ChatBot = ({ open, onClose }) => {
                     : "var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm)",
                 background:
                   msg.role === "user"
-                    ? "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)"
+                    ? "linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)"
                     : msg.isError
                     ? "var(--error-light)"
                     : "white",
@@ -300,7 +300,7 @@ const ChatBot = ({ open, onClose }) => {
                     width: "7px",
                     height: "7px",
                     borderRadius: "50%",
-                    backgroundColor: "#7c3aed",
+                    backgroundColor: "var(--terracotta)",
                     display: "inline-block",
                     animation: "typingDot 1.2s infinite",
                     animationDelay: `${i * 0.2}s`,
@@ -364,7 +364,7 @@ const ChatBot = ({ open, onClose }) => {
             padding: "0.5rem 0.5rem 0.5rem 0.75rem",
             transition: "border-color 0.15s",
           }}
-          onFocusCapture={(e) => (e.currentTarget.style.borderColor = "#7c3aed")}
+          onFocusCapture={(e) => (e.currentTarget.style.borderColor = "var(--terracotta)")}
           onBlurCapture={(e) => (e.currentTarget.style.borderColor = "var(--gray-300)")}
         >
           <textarea
@@ -405,7 +405,7 @@ const ChatBot = ({ open, onClose }) => {
               background:
                 !input.trim() || loading || insufficientTokens
                   ? "var(--gray-200)"
-                  : "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
+                  : "linear-gradient(135deg, var(--terracotta) 0%, var(--dark-terracotta) 100%)",
               color: !input.trim() || loading || insufficientTokens ? "var(--gray-400)" : "white",
               display: "flex",
               alignItems: "center",

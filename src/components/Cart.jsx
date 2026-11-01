@@ -2,7 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import AppContext from "../Context/Context";
 import CheckoutPopup from "./CheckoutPopup";
 import OrderSuccessModal from "./OrderSuccessModal";
-import { Button } from 'react-bootstrap';
+import { Button } from "react-bootstrap";
 import { toast } from "react-toastify";
 import unplugged from "../assets/unplugged.png";
 import { formatCurrency } from "../utils/formatters";
@@ -121,7 +121,7 @@ const Cart = () => {
                       Your cart is empty
                     </h3>
                     <p className="text-muted mb-4">
-                      Looks like you haven't added any items to your cart yet. 
+                      Looks like you haven&apos;t added any items to your cart yet.
                       Start shopping to fill it up!
                     </p>
                     <a 
@@ -163,7 +163,7 @@ const Cart = () => {
                   
                   <div className="card-body p-0">
                     <div className="table-responsive">
-                      <table className="table table-hover align-middle mb-0">
+                      <table className="table table-hover align-middle mb-0 cart-table">
                         <thead style={{ backgroundColor: 'var(--gray-50)' }}>
                           <tr>
                             <th className="border-0 py-3 px-4 fw-semibold" style={{ color: 'var(--gray-700)' }}>
@@ -193,13 +193,13 @@ const Cart = () => {
                                 borderBottom: '1px solid var(--gray-200)'
                               }}
                             >
-                              <td className="py-4 px-4">
+                              <td className="py-4 px-4" data-label="Product">
                                 <div className="d-flex align-items-center">
                                   <div className="me-3">
                                     <img
                                       src={getProductImageUrl(item.id)}
                                       alt={item.name}
-                                      className="rounded"
+                                      className="rounded cart-product-image"
                                       style={{
                                         width: '80px',
                                         height: '80px',
@@ -211,7 +211,7 @@ const Cart = () => {
                                       }}
                                     />
                                   </div>
-                                  <div>
+                                  <div className="cart-product-name">
                                     <h6 className="mb-1 fw-semibold" style={{ color: 'var(--gray-900)' }}>
                                       {item.name}
                                     </h6>
@@ -220,14 +220,14 @@ const Cart = () => {
                                 </div>
                               </td>
                               
-                              <td className="py-4 px-4 text-center">
+                              <td className="py-4 px-4 text-center" data-label="Price">
                                 <span className="fw-semibold" style={{ color: 'var(--gray-900)' }}>
                                   {formatCurrency(item.price)}
                                 </span>
                               </td>
                               
-                              <td className="py-4 px-4 text-center">
-                                <div className="d-flex justify-content-center">
+                              <td className="py-4 px-4 text-center" data-label="Quantity">
+                                <div className="d-flex justify-content-center quantity-control">
                                   <div 
                                     className="input-group" 
                                     style={{ 
@@ -273,13 +273,13 @@ const Cart = () => {
                                 </div>
                               </td>
                               
-                              <td className="py-4 px-4 text-center">
+                              <td className="py-4 px-4 text-center" data-label="Total">
                                 <span className="fw-bold" style={{ color: 'var(--primary-color)', fontSize: '1.1rem' }}>
                                   {formatCurrency(item.price * item.quantity)}
                                 </span>
                               </td>
                               
-                              <td className="py-4 px-4 text-center">
+                              <td className="py-4 px-4 text-center" data-label="Remove">
                                 <button
                                   className="btn btn-outline-danger btn-sm"
                                   onClick={() => handleRemoveFromCart(item.id)}

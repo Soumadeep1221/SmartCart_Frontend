@@ -27,10 +27,16 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  const login = useCallback((authResponse) => {
+  const login = useCallback(async (authResponse) => {
     localStorage.setItem("jwt", authResponse.token);
     localStorage.setItem("user", JSON.stringify(authResponse.user));
     setUser(authResponse.user);
+    try {
+      const response = await axios.get("/tokens/costs");
+      setTokenCosts(response.data);
+    } catch (error) {
+      console.error("Failed to load AI token costs:", error);
+    }
   }, []);
 
   const updateTokenBalance = useCallback((balance) => {
@@ -46,10 +52,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    axios.get("/tokens/costs")
-      .then((response) => setTokenCosts(response.data))
-      .catch((error) => console.error("Failed to load token costs:", error));
-
     const token = localStorage.getItem("jwt");
     if (!token) {
       setLoading(false);
@@ -60,9 +62,17 @@ export const AuthProvider = ({ children }) => {
       .then((response) => {
         localStorage.setItem("user", JSON.stringify(response.data));
         setUser(response.data);
+        return axios.get("/tokens/costs");
       })
-      .catch(() => {
-        logout();
+      .then((response) => {
+        if (response) setTokenCosts(response.data);
+      })
+      .catch((error) => {
+        if (error.response?.status === 401) {
+          logout();
+        } else {
+          console.error("Failed to initialize authenticated session:", error);
+        }
       })
       .finally(() => setLoading(false));
   }, [logout]);
