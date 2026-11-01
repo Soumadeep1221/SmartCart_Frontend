@@ -1,16 +1,20 @@
 import { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "../axios";
+import axios, { getProductImageUrl } from "../axios";
 import { toast } from "react-toastify";
 import { CATEGORIES } from "../constants/categories";
 import { getCategoryLabel } from "../constants/categories";
 import AppContext from "../Context/Context";
 import { productDetailCache } from "../Context/Context";
+import { useAuth } from "../Context/AuthContext";
+import { getAiErrorMessage, getTokenBalance } from "../utils/ai";
 
 const UpdateProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { updateProductInData } = useContext(AppContext);
+  const { user, tokenCosts, updateTokenBalance } = useAuth();
+  const isAdmin = user?.admin === true;
 
   const [product, setProduct] = useState({});
   const [image, setImage] = useState(null);
@@ -33,11 +37,10 @@ const UpdateProduct = () => {
     productAvailable: false,
     stockQuantity: "",
   });
-
-  // ✅ Convert blob → file
-  const convertUrlToFile = async (blobData, fileName) => {
-    return new File([blobData], fileName, { type: blobData.type });
-  };
+  const descriptionCost = Number(tokenCosts.description);
+  const imageCost = Number(tokenCosts.image);
+  const insufficientDescriptionTokens = Number.isFinite(descriptionCost) && (user?.tokenBalance ?? 0) < descriptionCost;
+  const insufficientImageTokens = Number.isFinite(imageCost) && (user?.tokenBalance ?? 0) < imageCost;
 
   // ✅ Fetch product
   useEffect(() => {
@@ -48,18 +51,7 @@ const UpdateProduct = () => {
         setProduct(response.data);
         setUpdateProduct(response.data);
         setCurrentImageName(response.data.imageName);
-
-        const responseImage = await axios.get(`/product/${id}/image`, {
-          responseType: "blob",
-        });
-
-        const imageFile = await convertUrlToFile(
-          responseImage.data,
-          response.data.imageName
-        );
-
-        setImage(imageFile);
-        setImagePreview(URL.createObjectURL(imageFile));
+        setImagePreview(getProductImageUrl(response.data.id));
 
       } catch (error) {
         console.error("Error fetching product:", error);
@@ -73,7 +65,7 @@ const UpdateProduct = () => {
   // ✅ Cleanup object URLs (VERY IMPORTANT)
   useEffect(() => {
     return () => {
-      if (imagePreview) {
+      if (imagePreview?.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
@@ -93,11 +85,13 @@ const UpdateProduct = () => {
       const response = await axios.post(`/product/generate-description`, null, {
         params: { name: updateProduct.name, category: updateProduct.category },
       });
+      if (!isAdmin) updateTokenBalance(getTokenBalance(response));
       setUpdateProduct((prev) => ({ ...prev, description: response.data }));
       if (errors.description) setErrors((prev) => ({ ...prev, description: null }));
       toast.success("Description generated!", { autoClose: 2000, hideProgressBar: true });
-    } catch {
-      toast.error("Failed to generate description. Please try again.", { autoClose: 3000, hideProgressBar: true });
+    } catch (error) {
+      if (!isAdmin) updateTokenBalance(getTokenBalance(error.response));
+      toast.error(getAiErrorMessage(error, "Failed to generate description. Please try again."), { autoClose: 3000, hideProgressBar: true });
     } finally {
       setGeneratingDesc(false);
     }
@@ -126,6 +120,7 @@ const UpdateProduct = () => {
         },
         responseType: "arraybuffer",
       });
+      if (!isAdmin) updateTokenBalance(getTokenBalance(response));
       const blob = new Blob([response.data], { type: "image/jpeg" });
       const file = new File([blob], "ai-generated.jpg", { type: "image/jpeg" });
       if (imagePreview) URL.revokeObjectURL(imagePreview);
@@ -135,12 +130,8 @@ const UpdateProduct = () => {
       if (errors.image) setErrors((prev) => ({ ...prev, image: null }));
       toast.success("Image generated!", { autoClose: 2000, hideProgressBar: true });
     } catch (err) {
-      let message = "Failed to generate image. Please try again.";
-      if (err.response?.data) {
-        try { message = new TextDecoder().decode(err.response.data); } catch (_) {}
-      }
-      console.error("Image generation error:", message);
-      toast.error("Failed to generate image. Please try again.", { autoClose: 3000, hideProgressBar: true });
+      if (!isAdmin) updateTokenBalance(getTokenBalance(err.response));
+      toast.error(getAiErrorMessage(err, "Failed to generate image. Please try again."), { autoClose: 3000, hideProgressBar: true });
     } finally {
       setGeneratingImage(false);
     }
@@ -176,8 +167,7 @@ const UpdateProduct = () => {
       // Optimistically update the product list in context — instant UI update
       updateProductInData(Number(id), {
         ...updateProduct,
-        // If image changed, clear cached imageData so it re-fetches
-        ...(imageChanged ? { imageData: null, imageName: image?.name } : {}),
+        ...(imageChanged ? { imageName: image?.name } : {}),
       });
 
       toast.success("Product updated successfully!", {
@@ -369,19 +359,19 @@ const UpdateProduct = () => {
                       <button
                         type="button"
                         onClick={handleGenerateDescription}
-                        disabled={generatingDesc}
+                        disabled={generatingDesc || (!isAdmin && insufficientDescriptionTokens)}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                           padding: '0.35rem 0.85rem', fontSize: '0.8rem', fontWeight: '600',
                           border: 'none', borderRadius: 'var(--radius-md)',
-                          cursor: generatingDesc ? 'not-allowed' : 'pointer',
-                          background: generatingDesc ? 'var(--gray-200)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                          color: generatingDesc ? 'var(--gray-500)' : 'white',
-                          boxShadow: generatingDesc ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
+                          cursor: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'not-allowed' : 'pointer',
+                          background: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'var(--gray-200)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                          color: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'var(--gray-500)' : 'white',
+                          boxShadow: generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
                           transition: 'all 0.2s ease',
                         }}
-                        onMouseEnter={(e) => { if (!generatingDesc) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(124,58,237,0.45)'; }}}
-                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = generatingDesc ? 'none' : '0 2px 8px rgba(124,58,237,0.35)'; }}
+                        onMouseEnter={(e) => { if (!generatingDesc && (isAdmin || !insufficientDescriptionTokens)) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(124,58,237,0.45)'; }}}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = generatingDesc || (!isAdmin && insufficientDescriptionTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)'; }}
                       >
                         {generatingDesc ? (
                           <><span className="spinner-border" role="status" aria-hidden="true" style={{ width: '0.75rem', height: '0.75rem', borderWidth: '2px' }}></span>Generating...</>
@@ -389,6 +379,10 @@ const UpdateProduct = () => {
                           <><i className="bi bi-stars"></i>AI Generate</>
                         )}
                       </button>
+                      {!isAdmin && <small className="text-muted ms-2">
+                        Generate description: {Number.isFinite(descriptionCost) ? descriptionCost : "..."} tokens
+                        {insufficientDescriptionTokens && " · Not enough tokens"}
+                      </small>}
                     </div>
                     <textarea
                       className={`form-control ${errors.description ? 'is-invalid' : ''}`}
@@ -550,19 +544,19 @@ const UpdateProduct = () => {
                       <button
                         type="button"
                         onClick={handleGenerateImage}
-                        disabled={generatingImage}
+                        disabled={generatingImage || (!isAdmin && insufficientImageTokens)}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                           padding: '0.35rem 0.85rem', fontSize: '0.8rem', fontWeight: '600',
                           border: 'none', borderRadius: 'var(--radius-md)',
-                          cursor: generatingImage ? 'not-allowed' : 'pointer',
-                          background: generatingImage ? 'var(--gray-200)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                          color: generatingImage ? 'var(--gray-500)' : 'white',
-                          boxShadow: generatingImage ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
+                          cursor: generatingImage || (!isAdmin && insufficientImageTokens) ? 'not-allowed' : 'pointer',
+                          background: generatingImage || (!isAdmin && insufficientImageTokens) ? 'var(--gray-200)' : 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                          color: generatingImage || (!isAdmin && insufficientImageTokens) ? 'var(--gray-500)' : 'white',
+                          boxShadow: generatingImage || (!isAdmin && insufficientImageTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)',
                           transition: 'all 0.2s ease',
                         }}
-                        onMouseEnter={(e) => { if (!generatingImage) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(124,58,237,0.45)'; }}}
-                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = generatingImage ? 'none' : '0 2px 8px rgba(124,58,237,0.35)'; }}
+                        onMouseEnter={(e) => { if (!generatingImage && (isAdmin || !insufficientImageTokens)) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(124,58,237,0.45)'; }}}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = generatingImage || (!isAdmin && insufficientImageTokens) ? 'none' : '0 2px 8px rgba(124,58,237,0.35)'; }}
                       >
                         {generatingImage ? (
                           <><span className="spinner-border" role="status" aria-hidden="true" style={{ width: '0.75rem', height: '0.75rem', borderWidth: '2px' }}></span>Generating...</>
@@ -570,6 +564,10 @@ const UpdateProduct = () => {
                           <><i className="bi bi-stars"></i>AI Generate</>
                         )}
                       </button>
+                      {!isAdmin && <small className="text-muted ms-2">
+                        Generate image: {Number.isFinite(imageCost) ? imageCost : "..."} tokens
+                        {insufficientImageTokens && " · Not enough tokens"}
+                      </small>}
                     </div>
 
                     {imagePreview && (

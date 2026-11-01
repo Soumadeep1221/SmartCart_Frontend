@@ -1,15 +1,46 @@
-import axios from '../axios';
-import { useState } from 'react';
+import axios, { getProductImageUrl } from '../axios';
+import { useEffect, useState } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
-import { convertBase64ToDataURL, formatCurrency, formatDateIndian } from '../utils/formatters';
+import { formatCurrency, formatDateIndian } from '../utils/formatters';
 import unplugged from '../assets/unplugged.png';
+import { useAuth } from '../Context/AuthContext';
 
 const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSuccess }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.name || '');
   const [validated, setValidated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const normalizeOrderErrors = (rawErrors) => {
+    const normalized = {};
+
+    if (!rawErrors || typeof rawErrors !== 'object' || Array.isArray(rawErrors)) {
+      return normalized;
+    }
+
+    Object.entries(rawErrors).forEach(([fieldName, fieldError]) => {
+      const rawMessage = Array.isArray(fieldError)
+        ? fieldError.join(' ')
+        : typeof fieldError === 'object' && fieldError !== null
+          ? Object.values(fieldError).flat().join(' ')
+          : fieldError;
+
+      if (!rawMessage) return;
+
+      const normalizedField = {
+        customerName: 'name',
+        customer_name: 'name',
+        fullName: 'name',
+        name: 'name'
+      }[fieldName] || fieldName;
+
+      normalized[normalizedField] = String(rawMessage);
+    });
+
+    return normalized;
+  };
 
   const handleConfirm = async (event) => {
     event.preventDefault();
@@ -24,6 +55,7 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
     setValidated(true);
     setIsSubmitting(true);
     setError('');
+    setFieldErrors({});
 
     const orderItems = cartItems.map(item => ({
       productId: item.id,
@@ -32,7 +64,6 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
 
     const data = {
       customerName: name,
-      email: email,
       items: orderItems
     };
 
@@ -41,21 +72,41 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
       console.log(response, 'order placed');
 
       // Call the success callback with customer details
-      onOrderSuccess(name, email);
+      onOrderSuccess(name);
       
       // Reset form
       setName('');
-      setEmail('');
       setValidated(false);
       
     } catch (error) {
       console.log(error);
-      
+
+      if (error.response?.status === 400) {
+        const payload = error.response?.data;
+        const normalizedErrors = normalizeOrderErrors(payload);
+
+        if (Object.keys(normalizedErrors).length > 0) {
+          setFieldErrors(normalizedErrors);
+          setError('');
+          return;
+        }
+
+        const fallbackMessage = typeof payload === 'string'
+          ? payload
+          : payload?.message || payload?.detail || 'Please check the form and try again.';
+
+        setFieldErrors({});
+        setError(fallbackMessage);
+        return;
+      }
+
       // Handle 409 Conflict error (Insufficient stock)
       if (error.response?.status === 409) {
         const errorMessage = error.response?.data?.detail || error.response?.data?.message || 'Product is out of stock.';
+        setFieldErrors({});
         setError(errorMessage.includes('Insufficient stock') ? errorMessage : 'Product is out of stock. Please check your cart.');
       } else {
+        setFieldErrors({});
         setError('Failed to place order. Please try again.');
       }
     } finally {
@@ -63,9 +114,10 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
     }
   };
 
-  const convertImageData = (base64String, mimeType = 'image/jpeg') => {
-    return convertBase64ToDataURL(base64String, unplugged, mimeType);
-  };
+  useEffect(() => {
+    if (show && user?.name && !name) setName(user.name);
+  }, [show, user, name]);
+
   return (
     <Modal 
       show={show} 
@@ -97,6 +149,17 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
             </div>
           )}
 
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="alert alert-danger animate-slideInUp" role="alert">
+              <i className="bi bi-exclamation-triangle me-2"></i>
+              <ul className="mb-0 ps-3">
+                {Object.entries(fieldErrors).map(([fieldName, message]) => (
+                  <li key={fieldName}>{fieldName === 'name' ? 'Full Name' : fieldName}: {message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Order Items */}
           <div className="checkout-items mb-4">
             <h5 className="mb-3 fw-semibold" style={{ color: 'var(--gray-900)' }}>
@@ -122,7 +185,7 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
                   }}
                 >
                   <img
-                    src={convertImageData(item.imageData)}
+                    src={getProductImageUrl(item.id)}
                     alt={item.name}
                     className="me-3 rounded"
                     style={{ 
@@ -181,8 +244,19 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
                     type="text"
                     placeholder="Enter your full name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (error) setError('');
+                      if (fieldErrors.name) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.name;
+                          return next;
+                        });
+                      }
+                    }}
                     required
+                    isInvalid={Boolean(fieldErrors.name) || (validated && !name)}
                     style={{
                       borderColor: 'var(--gray-300)',
                       borderRadius: 'var(--radius-md)',
@@ -190,33 +264,11 @@ const CheckoutPopup = ({ show, handleClose, cartItems, totalPrice, onOrderSucces
                     }}
                   />
                   <Form.Control.Feedback type="invalid">
-                    Please provide your full name.
+                    {fieldErrors.name || 'Please provide your full name.'}
                   </Form.Control.Feedback>
                 </Form.Group>
               </div>
               
-              <div className="col-md-6">
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-medium" style={{ color: 'var(--gray-700)' }}>
-                    Email Address *
-                  </Form.Label>
-                  <Form.Control
-                    type="email"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{
-                      borderColor: 'var(--gray-300)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '0.75rem 1rem'
-                    }}
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    Please provide a valid email address.
-                  </Form.Control.Feedback>
-                </Form.Group>
-              </div>
             </div>
 
 

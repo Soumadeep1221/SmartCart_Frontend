@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "../axios";
+import axios, { getProductImageUrl } from "../axios";
 import { CATEGORIES } from "../constants/categories";
-import { convertBase64ToDataURL, formatCurrency } from "../utils/formatters";
+import { formatCurrency } from "../utils/formatters";
 import unplugged from "../assets/unplugged.png";
 import { useContext } from "react";
 import AppContext from "../Context/Context";
+import { useAuth } from "../Context/AuthContext";
 import ChatBot from "./ChatBot";
 
 const Navbar = () => {
   const { selectedCategory, setSelectedCategory } = useContext(AppContext);
+  const { user, logout } = useAuth();
   const getInitialTheme = () => {
     const storedTheme = localStorage.getItem("theme");
     return storedTheme ? storedTheme : "light-theme";
@@ -154,6 +156,14 @@ const Navbar = () => {
   
   return (
     <>
+    {!user?.admin && Number(user?.tokenBalance) === 0 && (
+      <div
+        className="alert alert-warning mb-0 text-center rounded-0"
+        style={{ position: "fixed", top: "68px", left: 0, right: 0, zIndex: 1040 }}
+      >
+        You’ve used all your tokens. Logging in again does not give more tokens.
+      </div>
+    )}
     <nav className="navbar navbar-expand-lg fixed-top shadow-sm" style={{ backgroundColor: 'white', borderBottom: '1px solid var(--gray-200)' }} ref={navbarRef}>
       <div className="container-fluid px-4">
         {/* Brand Logo */}
@@ -312,7 +322,7 @@ const Navbar = () => {
               </ul>
             </li>
 
-            <li className="nav-item">
+            {user?.admin && <li className="nav-item">
               <a 
                 className="nav-link fw-medium px-3 py-2 rounded-pill" 
                 style={{ 
@@ -334,11 +344,32 @@ const Navbar = () => {
                 <i className="bi bi-box-seam me-1"></i>
                 Orders
               </a>
-            </li>
+            </li>}
           </ul>
           
           {/* Right Side - Cart and Search */}
           <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-2">
+              <img
+                src={user.pictureUrl}
+                alt={user.name}
+                className="rounded-circle"
+                style={{ width: "34px", height: "34px", objectFit: "cover" }}
+              />
+              <div className="d-none d-xl-block">
+                <div className="fw-semibold small">{user.name}</div>
+                <span className="badge text-bg-primary">
+                  {user.admin ? "Unlimited" : `Tokens: ${user.tokenBalance ?? 0}`}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={logout}
+              >
+                Logout
+              </button>
+            </div>
             {/* Cart Link */}
             <a 
               href="/cart" 
@@ -459,7 +490,7 @@ const Navbar = () => {
                           <div className="d-flex align-items-center">
                             <div className="me-3">
                               <img 
-                                src={convertBase64ToDataURL(product.imageData, unplugged)}
+                                src={getProductImageUrl(product.id)}
                                 alt={product.name}
                                 style={{ 
                                   width: '50px', 

@@ -1,16 +1,18 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import AppContext from "../Context/Context";
+import { useAuth } from "../Context/AuthContext";
 import { productDetailCache } from "../Context/Context";
-import axios from "../axios";
+import axios, { getProductImageUrl } from "../axios";
 import { toast } from "react-toastify";
-import { convertBase64ToDataURL, formatCurrency, getStockStatus } from "../utils/formatters";
+import { formatCurrency, getStockStatus } from "../utils/formatters";
 import { getCategoryLabel } from "../constants/categories";
 import unplugged from "../assets/unplugged.png";
 
 const Product = () => {
   const { id } = useParams();
   const { data, addToCart, removeFromCart, refreshData, updateStockQuantity } = useContext(AppContext);
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [localStockQuantity, setLocalStockQuantity] = useState(null);
@@ -32,11 +34,7 @@ const Product = () => {
         setProduct(productData);
         setLocalStockQuantity(productData.stockQuantity);
 
-        if (productData.imageData) {
-          setImageUrl(convertBase64ToDataURL(productData.imageData, unplugged));
-        } else {
-          setImageUrl(unplugged);
-        }
+        setImageUrl(getProductImageUrl(productData.id));
       } catch (error) {
         delete productDetailCache[id]; // clear on error so retry works
         console.error("Error fetching product:", error);
@@ -72,35 +70,53 @@ const Product = () => {
 
     setDeleting(true);
     try {
-      await axios.delete(`/product/${id}`);
-      delete productDetailCache[id]; // clear stale cache
-      removeFromCart(id);
-      refreshData(true);
-      
-      // Show professional delete success message
-      toast.success("Product deleted successfully", {
-        position: "top-center",
-        autoClose: 2000,
-        hideProgressBar: true,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        style: {
-          background: 'linear-gradient(135deg, var(--success-color) 0%, var(--success-hover) 100%)',
-          color: 'white',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-xl)',
-          fontWeight: '500',
-          fontSize: '1rem'
-        }
+      const response = await axios.delete(`/product/${id}`, {
+        validateStatus: (status) => status !== 401 && status !== 403
       });
-      
-      setTimeout(() => {
-        navigate("/");
-      }, 1500);
+
+      if (response.status === 200) {
+        delete productDetailCache[id]; // clear stale cache
+        removeFromCart(id);
+        refreshData(true);
+
+        toast.success("Product deleted successfully", {
+          position: "top-center",
+          autoClose: 2000,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          style: {
+            background: 'linear-gradient(135deg, var(--success-color) 0%, var(--success-hover) 100%)',
+            color: 'white',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-xl)',
+            fontWeight: '500',
+            fontSize: '1rem'
+          }
+        });
+
+        setTimeout(() => {
+          navigate("/");
+        }, 1500);
+      } else if (response.status === 409) {
+        const responseText = typeof response.data === "string"
+          ? response.data
+          : response.data?.message || response.data?.detail;
+        toast.warning(responseText || "This product cannot be deleted because it is currently in use.");
+        setDeleting(false);
+      } else if (response.status === 404) {
+        toast.error("Product not found");
+        setDeleting(false);
+      } else {
+        toast.error("Failed to delete product. Please try again.");
+        setDeleting(false);
+      }
     } catch (error) {
       console.error("Error deleting product:", error);
-      toast.error("Failed to delete product. Please try again.");
+      if (error.response?.status !== 403) {
+        toast.error("Failed to delete product. Please try again.");
+      }
       setDeleting(false);
     }
   };
@@ -201,7 +217,7 @@ const Product = () => {
             {toastProduct && (
               <div className="d-flex align-items-center">
                 <img 
-                  src={toastProduct.imageData ? convertBase64ToDataURL(toastProduct.imageData, unplugged) : unplugged} 
+                  src={getProductImageUrl(toastProduct.id)}
                   alt={toastProduct.name} 
                   className="me-3 rounded" 
                   style={{
@@ -254,7 +270,7 @@ const Product = () => {
                       }}
                     >
                       <img
-                        src={imageUrl || (product ? convertBase64ToDataURL(product.imageData, unplugged) : unplugged)}
+                        src={imageUrl || (product ? getProductImageUrl(product.id) : unplugged)}
                         alt={product.name}
                         className="img-fluid"
                         style={{ 
@@ -441,7 +457,7 @@ const Product = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="d-flex gap-3">
+                    {user?.admin && <div className="d-flex gap-3">
                       <button
                         className="btn btn-outline-primary"
                         type="button"
@@ -481,7 +497,7 @@ const Product = () => {
                           </>
                         )}
                       </button>
-                    </div>
+                    </div>}
                   </div>
                 </div>
               </div>

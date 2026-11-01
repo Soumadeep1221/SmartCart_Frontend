@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import AppContext from "../Context/Context";
 import unplugged from "../assets/unplugged.png";
 import { getCategoryLabel } from "../constants/categories";
-import { convertBase64ToDataURL, formatCurrency, getStockStatus } from "../utils/formatters";
+import { formatCurrency, getStockStatus } from "../utils/formatters";
+import { getProductImageUrl } from "../axios";
 
 const Home = () => {
   const { data, isError, addToCart, updateStockQuantity, selectedCategory } = useContext(AppContext);
@@ -20,11 +21,6 @@ const Home = () => {
     }
     return () => clearTimeout(toastTimer);
   }, [showToast]);
-
-  // Function to convert base64 string to data URL
-  const convertImageData = (base64String, mimeType = 'image/jpeg') => {
-    return convertBase64ToDataURL(base64String, unplugged, mimeType);
-  };
 
   const handleAddToCart = async (e, product) => {
     e.preventDefault();
@@ -155,7 +151,7 @@ const Home = () => {
             {toastProduct && (
               <div className="d-flex align-items-center">
                 <img 
-                  src={convertImageData(toastProduct.imageData)} 
+                  src={getProductImageUrl(toastProduct.id)}
                   alt={toastProduct.name} 
                   className="me-3 rounded" 
                   style={{
@@ -291,7 +287,7 @@ const Home = () => {
         ) : (
           <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
             {filteredProducts.map((product, index) => {
-              const { id, brand, name, price, productAvailable, imageData, stockQuantity } = product;
+              const { id, brand, name, price, productAvailable, stockQuantity } = product;
               const stockStatus = getStockStatus(stockQuantity);
               const isOutOfStock = stockQuantity === 0 || !productAvailable;
               const isAddingThisProduct = addingToCart === id;
@@ -326,7 +322,7 @@ const Home = () => {
                       {/* Product Image */}
                       <div className="position-relative">
                         <img
-                          src={convertImageData(imageData)} 
+                          src={getProductImageUrl(id)}
                           alt={name}
                           className="card-img-top"
                           style={{ 

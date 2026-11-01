@@ -1,6 +1,7 @@
 import { Modal, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { formatCurrency, convertBase64ToDataURL } from '../utils/formatters';
+import { formatCurrency } from '../utils/formatters';
+import { getProductImageUrl } from '../axios';
 import unplugged from '../assets/unplugged.png';
 
 const OrderSuccessModal = ({ show, handleClose, orderItems, totalPrice, customerName }) => {
@@ -148,7 +149,7 @@ const OrderSuccessModal = ({ show, handleClose, orderItems, totalPrice, customer
               >
                 <div className="item-image me-3">
                   <img
-                    src={convertBase64ToDataURL(item.imageData, unplugged)}
+                    src={getProductImageUrl(item.id)}
                     alt={item.name}
                     className="rounded"
                     style={{ 

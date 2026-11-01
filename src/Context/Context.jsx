@@ -1,5 +1,6 @@
 import axios from "../axios";
 import { useState, useEffect, useRef, createContext, useCallback } from "react";
+import { useAuth } from "./AuthContext";
 
 const AppContext = createContext({
   data: [],
@@ -22,6 +23,7 @@ let productCache = null;
 export const productDetailCache = {};
 
 export const AppProvider = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState([]);
   const [isError, setIsError] = useState("");
   const [cart, setCart] = useState(() => {
@@ -118,8 +120,8 @@ export const AppProvider = ({ children }) => {
   };
   
   useEffect(() => {
-    refreshData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!authLoading && user) refreshData();
+  }, [authLoading, user, refreshData]);
 
   useEffect(() => {
     // Skip first render — cart is already loaded from localStorage via useState initializer

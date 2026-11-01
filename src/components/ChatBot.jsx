@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "../axios";
+import { useAuth } from "../Context/AuthContext";
+import { getAiErrorMessage, getTokenBalance } from "../utils/ai";
 
 const WELCOME = {
   id: "welcome",
   role: "bot",
-  text: "Hi! I'm your shopping assistant for Soumadeep's Corner. Ask me anything about our products, orders, or anything else I can help with!",
+  text: "Hi! I can help you find products, check prices and stock, or show your orders.",
   time: new Date(),
 };
+
+const REQUEST_ERROR_MESSAGE = "Sorry, I’m having trouble right now. Please try again in a moment.";
 
 const formatTime = (date) => {
   return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
@@ -18,6 +22,16 @@ const ChatBot = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const { user, tokenCosts, updateTokenBalance } = useAuth();
+  const isAdmin = user?.admin === true;
+  const chatCost = Number(tokenCosts.chat);
+  const insufficientTokens = !isAdmin && Number.isFinite(chatCost) && (user?.tokenBalance ?? 0) < chatCost;
+  const suggestions = [
+    "What products do you have?",
+    "Show my orders",
+    "Is [product] in stock?",
+    ...(isAdmin ? ["Show all orders"] : []),
+  ];
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -31,8 +45,8 @@ const ChatBot = ({ open, onClose }) => {
     }
   }, [open]);
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const sendMessage = async (message = input) => {
+    const text = message.trim();
     if (!text || loading) return;
 
     const userMsg = { id: Date.now(), role: "user", text, time: new Date() };
@@ -42,20 +56,22 @@ const ChatBot = ({ open, onClose }) => {
 
     try {
       const response = await axios.get(`/ask`, { params: { message: text } });
+      if (!isAdmin) updateTokenBalance(getTokenBalance(response));
       const botMsg = {
         id: Date.now() + 1,
         role: "bot",
-        text: response.data,
+        text: String(response.data ?? ""),
         time: new Date(),
       };
       setMessages((prev) => [...prev, botMsg]);
-    } catch {
+    } catch (error) {
+      if (!isAdmin) updateTokenBalance(getTokenBalance(error.response));
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           role: "bot",
-          text: "Sorry, I'm having trouble connecting right now. Please try again in a moment.",
+          text: getAiErrorMessage(error, REQUEST_ERROR_MESSAGE),
           time: new Date(),
           isError: true,
         },
@@ -63,6 +79,11 @@ const ChatBot = ({ open, onClose }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuggestion = (suggestion) => {
+    setInput(suggestion);
+    sendMessage(suggestion);
   };
 
   const handleKeyDown = (e) => {
@@ -293,6 +314,36 @@ const ChatBot = ({ open, onClose }) => {
         <div ref={bottomRef} />
       </div>
 
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.5rem",
+          padding: "0.75rem 1rem 0",
+          backgroundColor: "white",
+        }}
+      >
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            onClick={() => handleSuggestion(suggestion)}
+            disabled={loading || insufficientTokens}
+            style={{
+              border: "1px solid #c4b5fd",
+              borderRadius: "999px",
+              backgroundColor: "#f5f3ff",
+              color: "#5b21b6",
+              padding: "0.35rem 0.65rem",
+              fontSize: "0.75rem",
+              cursor: loading || insufficientTokens ? "not-allowed" : "pointer",
+            }}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+
       {/* Input */}
       <div
         style={{
@@ -327,8 +378,8 @@ const ChatBot = ({ open, onClose }) => {
               e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask me anything..."
-            disabled={loading}
+            placeholder="Ask about products, prices, stock, or orders..."
+            disabled={loading || insufficientTokens}
             style={{
               flex: 1,
               border: "none",
@@ -345,21 +396,21 @@ const ChatBot = ({ open, onClose }) => {
           />
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || loading || insufficientTokens}
             style={{
               width: "36px",
               height: "36px",
               borderRadius: "var(--radius-md)",
               border: "none",
               background:
-                !input.trim() || loading
+                !input.trim() || loading || insufficientTokens
                   ? "var(--gray-200)"
                   : "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
-              color: !input.trim() || loading ? "var(--gray-400)" : "white",
+              color: !input.trim() || loading || insufficientTokens ? "var(--gray-400)" : "white",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              cursor: !input.trim() || loading ? "not-allowed" : "pointer",
+              cursor: !input.trim() || loading || insufficientTokens ? "not-allowed" : "pointer",
               flexShrink: 0,
               transition: "all 0.15s",
             }}
@@ -381,6 +432,12 @@ const ChatBot = ({ open, onClose }) => {
             )}
           </button>
         </div>
+        {!isAdmin && <div className="text-center mt-2">
+          <small style={{ color: insufficientTokens ? "var(--error-color)" : "var(--gray-400)", fontSize: "0.7rem" }}>
+            Chatbot message: {Number.isFinite(chatCost) ? chatCost : "..."} tokens
+            {insufficientTokens && " · Not enough tokens"}
+          </small>
+        </div>}
         <div style={{ textAlign: "center", marginTop: "0.4rem" }}>
           <small style={{ color: "var(--gray-400)", fontSize: "0.7rem" }}>
             Press Enter to send · Shift+Enter for new line

@@ -40,27 +40,6 @@ export const truncateText = (text, maxLength = 50) => {
 };
 
 /**
- * Convert base64 string to data URL with fallback
- * @param {string} base64String - Base64 string
- * @param {string} fallbackImage - Fallback image URL
- * @param {string} mimeType - MIME type
- * @returns {string} Data URL or fallback
- */
-export const convertBase64ToDataURL = (base64String, fallbackImage, mimeType = 'image/jpeg') => {
-  if (!base64String) return fallbackImage;
-  
-  if (base64String.startsWith('data:')) {
-    return base64String;
-  }
-  
-  if (base64String.startsWith('http')) {
-    return base64String;
-  }
-  
-  return `data:${mimeType};base64,${base64String}`;
-};
-
-/**
  * Generate a professional notification message
  * @param {string} type - Type of notification (success, error, info, warning)
  * @param {string} title - Notification title

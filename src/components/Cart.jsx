@@ -5,7 +5,8 @@ import OrderSuccessModal from "./OrderSuccessModal";
 import { Button } from 'react-bootstrap';
 import { toast } from "react-toastify";
 import unplugged from "../assets/unplugged.png";
-import { convertBase64ToDataURL, formatCurrency } from "../utils/formatters";
+import { formatCurrency } from "../utils/formatters";
+import { getProductImageUrl } from "../axios";
 
 const Cart = () => {
   const { cart, removeFromCart, clearCart, updateCartItemQuantity } = useContext(AppContext);
@@ -52,18 +53,13 @@ const Cart = () => {
     });
   };
 
-  const convertImageData = (base64String, mimeType = 'image/jpeg') => {
-    return convertBase64ToDataURL(base64String, unplugged, mimeType);
-  };
-
-  const handleCheckout = async (customerName, customerEmail) => {
+  const handleCheckout = async (customerName) => {
     try {
       // Store order details for success modal
       setOrderDetails({
         items: [...cart],
         totalPrice: totalPrice,
-        customerName: customerName,
-        customerEmail: customerEmail
+        customerName: customerName
       });
       
       // Clear cart and close checkout modal
@@ -201,7 +197,7 @@ const Cart = () => {
                                 <div className="d-flex align-items-center">
                                   <div className="me-3">
                                     <img
-                                      src={convertImageData(item.imageData)}
+                                      src={getProductImageUrl(item.id)}
                                       alt={item.name}
                                       className="rounded"
                                       style={{
