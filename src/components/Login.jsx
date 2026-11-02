@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import axios from "../axios";
+import axios, { resetAuthLogoutState } from "../axios";
 import { useAuth } from "../Context/AuthContext";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -54,6 +54,10 @@ const Login = () => {
   const mountedRef = useRef(false);
   const [error, setError] = useState("");
   const [scriptLoading, setScriptLoading] = useState(true);
+
+  useEffect(() => {
+    resetAuthLogoutState();
+  }, []);
 
   const renderGoogleButton = useCallback(async () => {
     if (!buttonRef.current || renderedRef.current || !GOOGLE_CLIENT_ID) {

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import axios, { clearAuthentication } from "../axios";
+import axios, { clearAuthentication, resetAuthLogoutState } from "../axios";
 
 const AuthContext = createContext({
   user: null,
@@ -25,9 +25,12 @@ export const AuthProvider = ({ children }) => {
     clearAuthentication();
     localStorage.removeItem("cart");
     setUser(null);
+    setTokenCosts({ chat: null, description: null, image: null });
+    setLoading(false);
   }, []);
 
   const login = useCallback(async (authResponse) => {
+    resetAuthLogoutState();
     localStorage.setItem("jwt", authResponse.token);
     localStorage.setItem("user", JSON.stringify(authResponse.user));
     setUser(authResponse.user);
@@ -50,6 +53,15 @@ export const AuthProvider = ({ children }) => {
       return updatedUser;
     });
   }, []);
+
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      logout();
+    };
+
+    window.addEventListener("auth-logout", handleAuthLogout);
+    return () => window.removeEventListener("auth-logout", handleAuthLogout);
+  }, [logout]);
 
   useEffect(() => {
     const token = localStorage.getItem("jwt");

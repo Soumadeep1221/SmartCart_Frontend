@@ -7,9 +7,33 @@ const API = axios.create({
 const clearAuthentication = () => {
   localStorage.removeItem("jwt");
   localStorage.removeItem("user");
+  localStorage.removeItem("cart");
+  try {
+    sessionStorage.clear();
+  } catch {
+    // Ignore environments where sessionStorage is restricted
+  }
 };
 
+let isLoggingOut = false;
 let lastForbiddenNotification = 0;
+
+export const resetAuthLogoutState = () => {
+  isLoggingOut = false;
+};
+
+const handleUnauthorized = () => {
+  clearAuthentication();
+
+  if (!isLoggingOut) {
+    isLoggingOut = true;
+    window.dispatchEvent(new CustomEvent("auth-logout"));
+
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+  }
+};
 
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("jwt");
@@ -25,10 +49,7 @@ API.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      clearAuthentication();
-      if (window.location.pathname !== "/login") {
-        window.location.assign("/login");
-      }
+      handleUnauthorized();
     } else if (status === 403) {
       const now = Date.now();
       if (now - lastForbiddenNotification > 1000) {
