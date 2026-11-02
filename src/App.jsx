@@ -13,6 +13,7 @@ import Login from "./components/Login";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import { toast, ToastContainer } from "react-toastify";
+import { isTokenValid } from "./axios";
 
 const RequireAuth = () => {
   const { user, loading } = useAuth();
@@ -21,7 +22,9 @@ const RequireAuth = () => {
   if (loading) {
     return <div className="min-vh-100 d-flex align-items-center justify-content-center">Loading...</div>;
   }
-  return user ? <Outlet /> : <Navigate to="/login" replace state={{ from: location }} />;
+  return user && isTokenValid()
+    ? <Outlet />
+    : <Navigate to="/login" replace state={{ from: location }} />;
 };
 
 const RequireAdmin = () => {

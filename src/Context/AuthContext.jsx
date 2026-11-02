@@ -1,5 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import axios, { clearAuthentication, resetAuthLogoutState } from "../axios";
+import axios, {
+  getTokenExpiration,
+  isTokenValid,
+  logout as logoutSession,
+  resetAuthLogoutState,
+} from "../axios";
 
 const AuthContext = createContext({
   user: null,
@@ -12,6 +17,8 @@ const AuthContext = createContext({
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
+    if (!isTokenValid()) return null;
+
     try {
       return JSON.parse(localStorage.getItem("user")) || null;
     } catch {
@@ -22,8 +29,7 @@ export const AuthProvider = ({ children }) => {
   const [tokenCosts, setTokenCosts] = useState({ chat: null, description: null, image: null });
 
   const logout = useCallback(() => {
-    clearAuthentication();
-    localStorage.removeItem("cart");
+    logoutSession();
     setUser(null);
     setTokenCosts({ chat: null, description: null, image: null });
     setLoading(false);
@@ -64,9 +70,8 @@ export const AuthProvider = ({ children }) => {
   }, [logout]);
 
   useEffect(() => {
-    const token = localStorage.getItem("jwt");
-    if (!token) {
-      setLoading(false);
+    if (!isTokenValid()) {
+      logout();
       return;
     }
 
@@ -88,6 +93,29 @@ export const AuthProvider = ({ children }) => {
       })
       .finally(() => setLoading(false));
   }, [logout]);
+
+  useEffect(() => {
+    if (!isTokenValid()) return undefined;
+
+    const expiration = getTokenExpiration();
+    if (!expiration) {
+      logout();
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(logout, Math.max(0, expiration - Date.now()));
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && !isTokenValid()) {
+        logout();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [logout, user]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, tokenCosts, updateTokenBalance }}>
