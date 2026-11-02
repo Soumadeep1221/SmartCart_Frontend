@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_BASE_URL } from "./config";
 
 const API = axios.create({
-  baseURL: `${import.meta.env.VITE_BASE_URL || "http://localhost:8080"}/api`,
+  baseURL: `${API_BASE_URL}/api`,
 });
 
 const AUTH_STORAGE_KEYS = ["jwt", "user"];
@@ -20,8 +21,9 @@ const getTokenPayload = () => {
 
     const payload = parts[1];
     const padding = "=".repeat((4 - (payload.length % 4)) % 4);
-    const decodedPayload = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(decodedPayload + padding);
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = atob(normalizedPayload + padding);
+    return JSON.parse(decodedPayload);
   } catch {
     return null;
   }

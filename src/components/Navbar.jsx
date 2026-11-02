@@ -131,7 +131,12 @@ const Navbar = () => {
               <button type="button" className="btn btn-outline-secondary" onClick={() => setChatOpen(true)}><i className="bi bi-stars me-1" />Ask AI</button>
               <div className="position-relative ms-lg-2" ref={profileRef}>
                 <button type="button" className="profile-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
-                  <img src={user?.pictureUrl || unplugged} alt="" className="rounded-circle" />
+                  <img
+                    src={user?.pictureUrl || unplugged}
+                    alt=""
+                    className="rounded-circle"
+                    onError={(event) => { event.currentTarget.src = unplugged; }}
+                  />
                   <span className="d-none d-xl-block text-start"><strong>{user?.name || "Your account"}</strong><small>{user?.admin ? "Admin" : "Member"}</small></span>
                   <i className="bi bi-chevron-down" />
                 </button>

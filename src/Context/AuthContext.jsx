@@ -15,6 +15,21 @@ const AuthContext = createContext({
   updateTokenBalance: () => {},
 });
 
+const normalizeUser = (user) => {
+  if (!user) return user;
+
+  return {
+    ...user,
+    pictureUrl: user.pictureUrl
+      || user.picture
+      || user.profilePictureUrl
+      || user.profilePicture
+      || user.imageUrl
+      || user.image
+      || "",
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     if (!isTokenValid()) return null;
@@ -38,8 +53,9 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (authResponse) => {
     resetAuthLogoutState();
     localStorage.setItem("jwt", authResponse.token);
-    localStorage.setItem("user", JSON.stringify(authResponse.user));
-    setUser(authResponse.user);
+    const authenticatedUser = normalizeUser(authResponse.user);
+    localStorage.setItem("user", JSON.stringify(authenticatedUser));
+    setUser(authenticatedUser);
     try {
       const response = await axios.get("/tokens/costs");
       setTokenCosts(response.data);
@@ -77,8 +93,9 @@ export const AuthProvider = ({ children }) => {
 
     axios.get("/me")
       .then((response) => {
-        localStorage.setItem("user", JSON.stringify(response.data));
-        setUser(response.data);
+        const authenticatedUser = normalizeUser(response.data);
+        localStorage.setItem("user", JSON.stringify(authenticatedUser));
+        setUser(authenticatedUser);
         return axios.get("/tokens/costs");
       })
       .then((response) => {

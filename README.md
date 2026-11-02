@@ -159,10 +159,10 @@ Define the following environment variables:
 
 | Variable | Required | Description | Example (Development) | Example (Production) |
 |---|---|---|---|---|
-| `VITE_BASE_URL` | **Yes** | Origin URL of your Spring Boot backend (do **not** append `/api`). | `http://localhost:8080` | `https://api.yourdomain.com` |
+| `VITE_API_BASE_URL` | **Yes** | Origin URL of your Spring Boot backend (do **not** append `/api`). | `http://your-backend-host` | `https://api.yourdomain.com` |
 | `VITE_GOOGLE_CLIENT_ID` | **Yes** | Google Cloud OAuth 2.0 Web Client ID. | `75180...apps.googleusercontent.com` | `75180...apps.googleusercontent.com` |
 
-> ⚠️ **Important:** Do not append `/api` to `VITE_BASE_URL`. The application's Axios configuration (`src/axios.jsx`) automatically appends `/api` to all request paths.
+> ⚠️ **Important:** Do not append `/api` to `VITE_API_BASE_URL`. The application's Axios configuration (`src/axios.jsx`) automatically appends `/api` to all request paths.
 
 ---
 
@@ -189,7 +189,7 @@ npm run dev
 
 The application will start with Hot Module Replacement (HMR) at:
 ```
-http://localhost:5173
+http://127.0.0.1:5173
 ```
 
 ---
@@ -215,14 +215,14 @@ This repository includes a `public/_redirects` file that is copied directly into
    - **Build command**: `npm run build`
    - **Publish directory**: `dist`
 3. Add Environment Variables in **Site configuration → Environment variables**:
-   - `VITE_BASE_URL` = `https://your-spring-backend.com`
+   - `VITE_API_BASE_URL` = `https://your-spring-backend.com`
    - `VITE_GOOGLE_CLIENT_ID` = `your-client-id.apps.googleusercontent.com`
 4. Trigger deploy.
 
 ### 2. Vercel
 1. Import the repository in Vercel.
 2. Framework Preset will auto-detect as **Vite**.
-3. Set the Environment Variables (`VITE_BASE_URL` and `VITE_GOOGLE_CLIENT_ID`).
+3. Set the Environment Variables (`VITE_API_BASE_URL` and `VITE_GOOGLE_CLIENT_ID`).
 4. To ensure SPA client-side routing on page refresh, create a `vercel.json` file in the root if not present:
    ```json
    {
@@ -263,7 +263,7 @@ Before moving this application to production, verify each item on this checklist
 - [x] **Zero Build Errors**: `npm run build` executes cleanly with Vite and generates optimized chunks in `dist/`.
 - [x] **Zero Lint Warnings**: `npm run lint` passes without any syntax, style, or hook dependency warnings.
 - [x] **SPA Routing Fallback**: `public/_redirects` is present for Netlify/Cloudflare; `vercel.json` or Nginx `try_files` configured for other providers.
-- [ ] **Production Backend URL**: `VITE_BASE_URL` is set to an **HTTPS** production endpoint (e.g. `https://api.yourdomain.com`).
+- [ ] **Production Backend URL**: `VITE_API_BASE_URL` is set to an **HTTPS** production endpoint (e.g. `https://api.yourdomain.com`).
 - [ ] **HTTPS Mixed Content Protection**: Both frontend and backend must use HTTPS. Browsers will block HTTP API requests from an HTTPS frontend.
 - [ ] **Google Cloud OAuth Origins**:
   - Open [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
