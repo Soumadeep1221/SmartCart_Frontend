@@ -223,7 +223,7 @@ Three settings have to line up, otherwise requests fail in the browser:
 ## 🔗 Related repositories
 
 - **Backend:** [SmartCart_Backend](https://github.com/Soumadeep1221/SmartCart_Backend) (Spring Boot, Spring AI, pgvector)
-- **Frontend:** [SpringEcommerce_Frontend](https://github.com/Soumadeep1221/SpringEcommerce_Frontend) (this repository)
+- **Frontend:** [SmartCart_Frontend](https://github.com/Soumadeep1221/SmartCart_Frontend) (this repository)
 
 ---
 
